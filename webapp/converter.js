@@ -1278,13 +1278,11 @@ function generateTestCode(parsed) {
   L.push('    with open("agent.py", "r") as f:');
   L.push('        source = f.read()');
   L.push('');
-  L.push('    required_imports = [');
-  L.push('        "from google.antigravity import Agent",');
-  L.push('        "from google.antigravity import LocalAgentConfig",');
-  L.push('    ]');
-  L.push('');
-  L.push('    for imp in required_imports:');
-  L.push('        assert imp in source, f"Missing import: {imp}"');
+  L.push('    # Check that both module and symbol are present');
+  L.push('    # (generated code may combine: from google.antigravity import Agent, LocalAgentConfig, types)');
+  L.push('    assert "google.antigravity" in source, "Missing google.antigravity import"');
+  L.push('    assert "Agent" in source, "Missing Agent import"');
+  L.push('    assert "LocalAgentConfig" in source, "Missing LocalAgentConfig import"');
   L.push('');
   L.push('');
 
@@ -1556,7 +1554,12 @@ except SyntaxError as e:
 # Test 2: Required imports
 required = ["from google.antigravity import Agent", "from google.antigravity import LocalAgentConfig"]
 for imp in required:
-    check(f"Import: {imp}", imp in source)
+    # The generated code may combine imports: "from google.antigravity import Agent, LocalAgentConfig, types"
+    # So check if both module and symbol are present
+    parts = imp.replace("from ", "").replace("import ", "").strip().split(" ")
+    module = parts[0]  # e.g. google.antigravity
+    symbol = parts[1] if len(parts) > 1 else ""  # e.g. Agent
+    check(f"Import: {imp}", module in source and symbol in source)
 
 # Test 3: Count agent configs
 config_count = source.count("LocalAgentConfig(")
@@ -1605,7 +1608,7 @@ check("Uses logging (not print)", "import logging" in source, "logging module im
 
 # Output
 results["stdout"] = f"Analyzed {len(source)} bytes, {len(source.splitlines())} lines"
-print(json.dumps(results))
+json.dumps(results)
 `;
 
     const output = pyodide.runPython(testScript);
