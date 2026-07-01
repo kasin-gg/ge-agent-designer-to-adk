@@ -1,0 +1,5 @@
+.gemini
+*.json
+!webapp/
+raw_output*.json
+.git

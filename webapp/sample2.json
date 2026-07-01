@@ -1,0 +1,1012 @@
+{
+  "name": "projects/27594031820/locations/global/collections/default_collection/engines/gemini-enterprise-tradefin_1782793870779/assistants/default_assistant/agents/17202851394025578532",
+  "displayName": "My Agent",
+  "description": "Agent to help interact with enterprise data.",
+  "createTime": "2026-06-30T08:36:21.946252Z",
+  "updateTime": "2026-07-01T04:06:05.127371546Z",
+  "state": "PRIVATE",
+  "workflowAgentDefinition": {
+    "agentFlow": {
+      "nodes": [
+        {
+          "id": "when_an_email_is_received",
+          "displayName": "When an email is received",
+          "nodeType": "CONNECTOR_EVENT_TRIGGER",
+          "connectorEventTrigger": {
+            "eventType": "create_message",
+            "inputParameters": {
+              "filter_clause": {
+                "type": "json",
+                "stringValue": "",
+                "filterConfig": true,
+                "jsonValue": {
+                  "children": [
+                    {
+                      "field": "SearchQuery",
+                      "conjunction": "AND",
+                      "operator": "=",
+                      "type": "expression",
+                      "value": {
+                        "children": [
+                          {
+                            "field": "subject",
+                            "conjunction": "AND",
+                            "operator": ":",
+                            "type": "expression",
+                            "value": {
+                              "displayValue": "Trade Finance",
+                              "value": "Trade Finance"
+                            }
+                          }
+                        ],
+                        "type": "group"
+                      }
+                    }
+                  ],
+                  "type": "group"
+                }
+              }
+            },
+            "dataStoreSpecs": {
+              "specs": [
+                {
+                  "dataStore": "projects/27594031820/locations/global/collections/default_collection/dataStores/gmail_1782801388285_google_mail"
+                }
+              ]
+            },
+            "dataConnector": {
+              "name": "projects/27594031820/locations/global/collections/gmail_1782801388285/dataConnector",
+              "dataSource": "google_mail"
+            }
+          },
+          "outputSchema": {
+            "properties": {
+              "Subject": {
+                "description": "The subject of the email.",
+                "type": "STRING"
+              },
+              "Date": {
+                "description": "The date when the email is sent.",
+                "type": "STRING"
+              },
+              "Snippet": {
+                "description": "The snippet of the email.",
+                "type": "STRING"
+              },
+              "HistoryId": {
+                "description": "The history id of the email.",
+                "type": "STRING"
+              },
+              "Content": {
+                "description": "The content of the email.",
+                "type": "STRING"
+              },
+              "Headers": {
+                "description": "A list of headers of the email.",
+                "type": "STRING"
+              },
+              "AttachmentPath": {
+                "description": "The path of the attachment.",
+                "type": "STRING"
+              },
+              "RawMessage": {
+                "description": "The entire email message in an RFC 2822 formatted and base64url encoded string. Only returned when MessageFormat=raw.",
+                "type": "STRING"
+              },
+              "Size": {
+                "description": "The size in bytes of the email.",
+                "type": "NUMBER"
+              },
+              "ThreadId": {
+                "description": "The thread id of the email.",
+                "type": "STRING"
+              },
+              "AttachmentIds": {
+                "description": "A comma separated value of the ids of all attachments in the email.",
+                "type": "STRING"
+              },
+              "To": {
+                "description": "The address where the email is sent to.",
+                "type": "STRING"
+              },
+              "Labels": {
+                "description": "A comma separated value of labels that the email is part of.",
+                "type": "STRING"
+              },
+              "BCC": {
+                "description": "The primary email address of the user. Writeable on create only. On update, a secondary email is added.",
+                "type": "STRING"
+              },
+              "From": {
+                "description": "The address where the email is from.",
+                "type": "STRING"
+              },
+              "CC": {
+                "description": "The primary email address of the user. Writeable on create only. On update, a secondary email is added.",
+                "type": "STRING"
+              },
+              "Id": {
+                "description": "The Id of the message.Automatically assigned when the mail is created.",
+                "type": "STRING"
+              }
+            }
+          }
+        },
+        {
+          "id": "gemini_agent_2",
+          "displayName": "Document Verification Agent",
+          "agentNode": {
+            "model": "gemini-3.5-flash",
+            "instruction": "```\n**Input:**\n\n\n```\n\n${gemini_agent_4.output}\n\n\\*\\*Summarize:\\*\\*\n\n\\\\- How many documents received\n\n\\\\- List all the documents\n\n\\*\\*Validation:\\*\\*\n\n\\\\- Check existence of the required and optional documents.\n\nRequired all:\n\n1. Application for Issuance of Documentary Credit\n\n2. Attachment Sheet\n\nOptional, but at least one of these\n\n1. Proforma Invoice (PI)\n\n2. Purchase Order (PO)\n\n3. Sales Contract (SC)\n\nOptional:\n\n1. Trust Receipt Form (TR)\n\n2. Quotation\n\n\\*\\*Output:\\*\\*\n{\"validation\":Yes/No, \"reasons\":\"\"}\n",
+            "dataStoreSpecs": {
+              "specs": [
+                {
+                  "dataStore": "projects/27594031820/locations/global/collections/default_collection/dataStores/gmail_1782801388285_google_mail"
+                }
+              ]
+            },
+            "outputDisplayEnabled": true
+          },
+          "nodeType": "AGENT_NODE",
+          "outputSchema": {
+            "properties": {
+              "reasons": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 1
+                }
+              },
+              "validation": {
+                "type": "BOOLEAN",
+                "additionalProperties": {
+                  "display_order": 0
+                }
+              }
+            },
+            "required": [
+              "validation",
+              "reasons"
+            ]
+          }
+        },
+        {
+          "id": "gemini_agent",
+          "displayName": "Root Agent",
+          "agentNode": {
+            "model": "gemini-3.5-flash",
+            "instruction": "\\### Objective Your task is to analyze the email contents it's is all about submit application for Trade Finance or Approve email for Trade Finance requested.\n\n\\## Input : Read from ${when_an_email_is_received.Content}\n\n\\### Extraction Rules\n\n1\\. If ${when_an_email_is_received.AttachmentIds} and ${when_an_email_is_received.AttachmentPath} is NULL or blank. and have some word in ${when_an_email_is_received.Content} have {\"APPROVE\", \"APPROVED\", \"approve\",\"approved\"} or related. Then OUTPUT mail_type\" = \"APPROVE\"\n\n2\\. if ${when_an_email_is_received.AttachmentIds} and ${when_an_email_is_received.AttachmentPath} is NOT NULL, OUTPUT \"mail_type\" = \"SUBMIT\"\n\n\\### OUTPUT extract ${when_an_email_is_received.Content} and push as an output list.\n\n{\\\n\"1_applicant_party_code_app\",\n\n\"2_applicant_address\",\n\n\"3_beneficiary_party_code_bne\",\n\n\"4_beneficiary_name\",\n\n\"5_beneficiary_address\",\n\n\"6_advising_bank_adv\",\n\n\"7_advising_through_bank_adt_id\",\n\n\"8_advising_through_bank_name\",\n\n\"9_advising_through_bank_address\",\n\n\"10_reimbursing_bank_rmb\",\n\n\"11_limit_credit_line\",\n\n\"12_currency\",\n\n\"13_lc_amount\",\n\n\"14_amount_terms_tolerance\",\n\n\"15_plus_minus_percent\",\n\n\"16_quantity_vary_percent\",\n\n\"17_effective_date\",\n\n\"18_expiry_date\",\n\n\"19_country\",\n\n\"20_expiry_country\",\n\n\"21_expiry_place\",\n\n\"22_confirm_status\",\n\n\"23_transferable\",\n\n\"24_tenor_data_type\",\n\n\"25_tenor_days\",\n\n\"26_draft_start_event\",\n\n\"27_due_date\",\n\n\"28_available_with\",\n\n\"29_settlement_method\",\n\n\"30_draft_drawn_on\",\n\n\"31_incoterms\",\n\n\"32_transportation_type\",\n\n\"33_partial_shipment_43P\",\n\n\"34_transhipment_43T\",\n\n\"35_place_of_taking_in_charge_44A\",\n\n\"36_port_of_loading_44E\",\n\n\"37_port_of_discharge_44F\",\n\n\"38_place_of_final_destination_44B\",\n\n\"39_latest_shipment_date\",\n\n\"40_goods_description_gdesc\",\n\n\"41_required_documents_01W08\",\n\n\"42_additional_conditions_01W11\",\n\n\"43_period_for_presentation_days\",\n\n\"44_confirm_charges_paid_by\",\n\n\"45_reimb_bank_charges_paid_by\",\n\n\"46_all_bank_charges_01W12\"\\\n}",
+            "selectedTools": {
+              "tools": [
+                {
+                  "name": "googleSearch"
+                }
+              ]
+            },
+            "outputDisplayEnabled": true
+          },
+          "nodeType": "AGENT_NODE",
+          "outputSchema": {
+            "properties": {
+              "28_available_with": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 28
+                }
+              },
+              "4_beneficiary_name": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 4
+                }
+              },
+              "10_reimbursing_bank_rmb": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 10
+                }
+              },
+              "14_amount_terms_tolerance": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 14
+                }
+              },
+              "7_advising_through_bank_adt_id": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 7
+                }
+              },
+              "11_limit_credit_line": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 11
+                }
+              },
+              "13_lc_amount": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 13
+                }
+              },
+              "16_quantity_vary_percent": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 16
+                }
+              },
+              "30_draft_drawn_on": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 30
+                }
+              },
+              "33_partial_shipment_43P": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 33
+                }
+              },
+              "38_place_of_final_destination_44B": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 38
+                }
+              },
+              "31_incoterms": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 31
+                }
+              },
+              "41_required_documents_01W08": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 41
+                }
+              },
+              "2_applicant_address": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 2
+                }
+              },
+              "6_advising_bank_adv": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 6
+                }
+              },
+              "3_beneficiary_party_code_bne": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 3
+                }
+              },
+              "35_place_of_taking_in_charge_44A": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 35
+                }
+              },
+              "44_confirm_charges_paid_by": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 44
+                }
+              },
+              "46_all_bank_charges_01W12": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 46
+                }
+              },
+              "27_due_date": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 27
+                }
+              },
+              "32_transportation_type": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 32
+                }
+              },
+              "34_transhipment_43T": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 34
+                }
+              },
+              "9_advising_through_bank_address": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 9
+                }
+              },
+              "26_draft_start_event": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 26
+                }
+              },
+              "5_beneficiary_address": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 5
+                }
+              },
+              "36_port_of_loading_44E": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 36
+                }
+              },
+              "1_applicant_party_code_app": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 1
+                }
+              },
+              "37_port_of_discharge_44F": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 37
+                }
+              },
+              "18_expiry_date": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 18
+                }
+              },
+              "15_plus_minus_percent": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 15
+                }
+              },
+              "23_transferable": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 23
+                }
+              },
+              "40_goods_description_gdesc": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 40
+                }
+              },
+              "45_reimb_bank_charges_paid_by": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 45
+                }
+              },
+              "21_expiry_place": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 21
+                }
+              },
+              "12_currency": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 12
+                }
+              },
+              "25_tenor_days": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 25
+                }
+              },
+              "24_tenor_data_type": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 24
+                }
+              },
+              "mail_type": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 0
+                }
+              },
+              "42_additional_conditions_01W11": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 42
+                }
+              },
+              "39_latest_shipment_date": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 39
+                }
+              },
+              "43_period_for_presentation_days": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 43
+                }
+              },
+              "8_advising_through_bank_name": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 8
+                }
+              },
+              "19_country": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 19
+                }
+              },
+              "22_confirm_status": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 22
+                }
+              },
+              "20_expiry_country": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 20
+                }
+              },
+              "29_settlement_method": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 29
+                }
+              },
+              "17_effective_date": {
+                "type": "STRING",
+                "additionalProperties": {
+                  "display_order": 17
+                }
+              }
+            },
+            "required": [
+              "mail_type",
+              "1_applicant_party_code_app",
+              "2_applicant_address",
+              "3_beneficiary_party_code_bne",
+              "4_beneficiary_name",
+              "5_beneficiary_address",
+              "6_advising_bank_adv",
+              "7_advising_through_bank_adt_id",
+              "8_advising_through_bank_name",
+              "9_advising_through_bank_address",
+              "10_reimbursing_bank_rmb",
+              "11_limit_credit_line",
+              "12_currency",
+              "13_lc_amount",
+              "14_amount_terms_tolerance",
+              "15_plus_minus_percent",
+              "16_quantity_vary_percent",
+              "17_effective_date",
+              "18_expiry_date",
+              "19_country",
+              "20_expiry_country",
+              "21_expiry_place",
+              "22_confirm_status",
+              "23_transferable",
+              "24_tenor_data_type",
+              "25_tenor_days",
+              "26_draft_start_event",
+              "27_due_date",
+              "28_available_with",
+              "29_settlement_method",
+              "30_draft_drawn_on",
+              "31_incoterms",
+              "32_transportation_type",
+              "33_partial_shipment_43P",
+              "34_transhipment_43T",
+              "35_place_of_taking_in_charge_44A",
+              "36_port_of_loading_44E",
+              "37_port_of_discharge_44F",
+              "38_place_of_final_destination_44B",
+              "39_latest_shipment_date",
+              "40_goods_description_gdesc",
+              "41_required_documents_01W08",
+              "42_additional_conditions_01W11",
+              "43_period_for_presentation_days",
+              "44_confirm_charges_paid_by",
+              "45_reimb_bank_charges_paid_by",
+              "46_all_bank_charges_01W12"
+            ]
+          }
+        },
+        {
+          "id": "condition",
+          "displayName": "Condition",
+          "nodeType": "CONDITION_NODE",
+          "conditionNode": {
+            "ruleBasedRouting": {
+              "rules": [
+                {
+                  "branch": "SUBMIT",
+                  "rule": {
+                    "rootExpression": {
+                      "logicalGroup": {
+                        "logicalOperator": "AND",
+                        "expressions": [
+                          {
+                            "condition": {
+                              "left": {
+                                "variablePath": "gemini_agent.mail_type"
+                              },
+                              "conditionOperator": "EQUALS",
+                              "right": {
+                                "literal": "SUBMIT"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "branch": "APPROVE",
+                  "rule": {
+                    "rootExpression": {
+                      "logicalGroup": {
+                        "logicalOperator": "AND",
+                        "expressions": [
+                          {
+                            "condition": {
+                              "left": {
+                                "variablePath": "gemini_agent.mail_type"
+                              },
+                              "conditionOperator": "EQUALS",
+                              "right": {
+                                "literal": "APPROVE"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "gemini_agent_3",
+          "displayName": "Rule Based Agent",
+          "agentNode": {
+            "model": "gemini-3.5-flash",
+            "instruction": "\\\\\\*\\\\\\*Role:\\\\\\*\\\\\\*\n\nYou are an expert Trade Finance Operations Specialist and SWIFT Messaging System Architect.\n\n\\\\\\*\\\\\\*Objective:\\\\\\*\\\\\\*\n\nYour task is to analyze the provided Letter of Credit (LC/DLC) document text, extract the relevant trade data, and format it STRICTLY as a standard SWIFT MT700 message. Generate the results for the mt700_message output parameter\n\n\\\\\\*\\\\\\*Input:\\\\\\*\\\\\\*\n\n\"1_applicant_party_code_app\",\n\n\"2_applicant_address\",\n\n\"3_beneficiary_party_code_bne\",\n\n\"4_beneficiary_name\",\n\n\"5_beneficiary_address\",\n\n\"6_advising_bank_adv\",\n\n\"7_advising_through_bank_adt_id\",\n\n\"8_advising_through_bank_name\",\n\n\"9_advising_through_bank_address\",\n\n\"10_reimbursing_bank_rmb\",\n\n\"11_limit_credit_line\",\n\n\"12_currency\",\n\n\"13_lc_amount\",\n\n\"14_amount_terms_tolerance\",\n\n\"15_plus_minus_percent\",\n\n\"16_quantity_vary_percent\",\n\n\"17_effective_date\",\n\n\"18_expiry_date\",\n\n\"19_country\",\n\n\"20_expiry_country\",\n\n\"21_expiry_place\",\n\n\"22_confirm_status\",\n\n\"23_transferable\",\n\n\"24_tenor_data_type\",\n\n\"25_tenor_days\",\n\n\"26_draft_start_event\",\n\n\"27_due_date\",\n\n\"28_available_with\",\n\n\"29_settlement_method\",\n\n\"30_draft_drawn_on\",\n\n\"31_incoterms\",\n\n\"32_transportation_type\",\n\n\"33_partial_shipment_43P\",\n\n\"34_transhipment_43T\",\n\n\"35_place_of_taking_in_charge_44A\",\n\n\"36_port_of_loading_44E\",\n\n\"37_port_of_discharge_44F\",\n\n\"38_place_of_final_destination_44B\",\n\n\"39_latest_shipment_date\",\n\n\"40_goods_description_gdesc\",\n\n\"41_required_documents_01W08\",\n\n\"42_additional_conditions_01W11\",\n\n\"43_period_for_presentation_days\",\n\n\"44_confirm_charges_paid_by\",\n\n\"45_reimb_bank_charges_paid_by\",\n\n\"46_all_bank_charges_01W12\",\n\n**\\*\\*Strict SWIFT Formatting Rules (CRITICAL):\\*\\***\n\n1\\. **\\*\\*Date Format:\\*\\*** All dates MUST be converted to the \\`YYMMDD\\` format (e.g., November 21, 2026 becomes \\`261121\\`).\n\n2\\. **\\*\\*Amount Format:\\*\\*** Amounts must follow the format \\`\\[3-letter Currency Code\\]\\[Amount using a comma as the decimal separator without thousand separators\\]\\` (e.g., USD 190,800.00 becomes \\`USD190800,00\\`).\n\n3\\. **\\*\\*Character Limits & Wrapping:\\*\\*** Free text fields (Tags 45A, 46A, 47A) MUST NOT exceed 65 characters per line. You must insert a carriage return / line break before the 65th character. Do not break words in half. Max 100 lines per tag.\n\n4\\. **\\*\\*Allowed Characters:\\*\\*** Only use the standard SWIFT character set (A-Z, a-z, 0-9, and standard punctuation: / - ? : ( ) . , ' +). Strip any unsupported special characters.\n\n5\\. **\\*\\*Missing Data:\\*\\*** If a JSON field is \\`null\\` or missing, omit it. If all fields for a non-mandatory SWIFT tag are \\`null\\`, omit the entire tag. Do not write \"null\", \"N/A\", or \"Not provided\" in the output.\n\n6\\. **\\*\\*No Conversational Text:\\*\\*** Output ONLY the raw MT700 message. Do not include introductory text, explanations, or markdown blocks.\n\n**\\*\\*Data Mapping Instructions (JSON Field to MT700 Tag):\\*\\***\n\n\\- **\\*\\*:20: (Documentary Credit Number):\\*\\*** Map from \\`11_limit_credit_line\\`.\n\n\\- **\\*\\*:31C: (Date of Issue):\\*\\*** Map from \\`17_effective_date\\` (Format: YYMMDD).\n\n\\- **\\*\\*:40A: (Form of Documentary Credit):\\*\\*** Determine using \\`23_transferable\\`. If \"Yes\", output \"IRREVOCABLE TRANSFERABLE\". If \"No\", output \"IRREVOCABLE\".\n\n\\- **\\*\\*:31D: (Date and Place of Expiry):\\*\\*** Combine \\`18_expiry_date\\` (Format: YYMMDD), \\`21_expiry_place\\`, and \\`20_expiry_country\\` on one line.\n\n\\- **\\*\\*:50: (Applicant):\\*\\*** Combine \\`1_applicant_party_code_app\\` and \\`2_applicant_address\\`. (Max 4 lines, 35 chars per line).\n\n\\- **\\*\\*:59: (Beneficiary):\\*\\*** Combine \\`3_beneficiary_party_code_bne\\`, \\`4_beneficiary_name\\`, \\`5_beneficiary_address\\`, and \\`19_country\\`. (Max 4 lines, 35 chars per line).\n\n\\- **\\*\\*:32B: (Currency Code, Amount):\\*\\*** Combine \\`12_currency\\` and \\`13_lc_amount\\`.\n\n\\- **\\*\\*:39A: (Percentage Credit Amount Tolerance):\\*\\*** Map from \\`15_plus_minus_percent\\` and \\`16_quantity_vary_percent\\` (e.g., if both are 5, output \\`5/5\\`). Ignore \\`14_amount_terms_tolerance\\` if it is just a descriptive duplicate.\n\n\\- **\\*\\*:41A/D: (Available With... By...):\\*\\*** Combine \\`28_available_with\\` and \\`29_settlement_method\\`.\n\n\\- **\\*\\*:42C: (Drafts at...):\\*\\*** Combine \\`24_tenor_data_type\\`, \\`25_tenor_days\\`, \\`26_draft_start_event\\`, and \\`27_due_date\\` into a coherent sentence.\n\n\\- **\\*\\*:42A/D: (Drawee):\\*\\*** Map from \\`30_draft_drawn_on\\`.\n\n\\- **\\*\\*:43P: (Partial Shipments):\\*\\*** Map from \\`33_partial_shipment_43P\\`.\n\n\\- **\\*\\*:43T: (Transhipment):\\*\\*** Map from \\`34_transhipment_43T\\`.\n\n\\- **\\*\\*:44A: (Place of Taking in Charge):\\*\\*** Map from \\`35_place_of_taking_in_charge_44A\\`.\n\n\\- **\\*\\*:44E: (Port of Loading):\\*\\*** Map from \\`36_port_of_loading_44E\\`.\n\n\\- **\\*\\*:44F: (Port of Discharge):\\*\\*** Map from \\`37_port_of_discharge_44F\\`.\n\n\\- **\\*\\*:44B: (Place of Final Destination):\\*\\*** Map from \\`38_place_of_final_destination_44B\\`.\n\n\\- **\\*\\*:44C: (Latest Date of Shipment):\\*\\*** Map from \\`39_latest_shipment_date\\` (Format: YYMMDD).\n\n\\- **\\*\\*:45A: (Description of Goods):\\*\\*** Combine \\`40_goods_description_gdesc\\`, \\`31_incoterms\\`, and \\`32_transportation_type\\`. (Wrap at 65 chars per line).\n\n\\- **\\*\\*:46A: (Documents Required):\\*\\*** Map from \\`41_required_documents_01W08\\`. (Wrap at 65 chars per line).\n\n\\- **\\*\\*:47A: (Additional Conditions):\\*\\*** Map from \\`42_additional_conditions_01W11\\`. (Wrap at 65 chars per line).\n\n\\- **\\*\\*:71D: (Charges):\\*\\*** Combine information from \\`44_confirm_charges_paid_by\\`, \\`45_reimb_bank_charges_paid_by\\`, and \\`46_all_bank_charges_01W12\\`.\n\n\\- **\\*\\*:48: (Period for Presentation):\\*\\*** Map from \\`43_period_for_presentation_days\\` (e.g., append \" DAYS\" if it is just a number).\n\n\\- **\\*\\*:49: (Confirmation Instructions):\\*\\*** Map from \\`22_confirm_status\\`.\n\n\\- **\\*\\*:53A/D: (Reimbursing Bank):\\*\\*** Map from \\`10_reimbursing_bank_rmb\\`.\n\n\\- **\\*\\*:57A/D: (Advise Through Bank):\\*\\*** Combine \\`6_advising_bank_adv\\`, \\`7_advising_through_bank_adt_id\\`, \\`8_advising_through_bank_name\\`, and \\`9_advising_through_bank_address\\`.\n\n**\\*\\*Begin Raw MT700 Output Below:\\*\\***",
+            "selectedTools": {
+              "tools": [
+                {
+                  "name": "googleSearch"
+                }
+              ]
+            },
+            "outputDisplayEnabled": true
+          },
+          "nodeType": "AGENT_NODE"
+        },
+        {
+          "id": "approval",
+          "displayName": "Approval",
+          "nodeType": "APPROVAL_NODE",
+          "approvalNode": {
+            "message": "Please verify commercial charge rate calculated by AI",
+            "approvalBranch": "Approved",
+            "rejectionBranch": "Rejected"
+          }
+        },
+        {
+          "id": "gemini_agent_5",
+          "displayName": "Document Conversion Agent",
+          "agentNode": {
+            "model": "gemini-3.5-flash",
+            "instruction": "convert SWIFF to MT700",
+            "selectedTools": {
+              "tools": [
+                {
+                  "name": "googleSearch"
+                }
+              ]
+            },
+            "outputDisplayEnabled": true
+          },
+          "nodeType": "AGENT_NODE"
+        },
+        {
+          "id": "send_mail_1",
+          "displayName": "Send Reject Mail",
+          "connectorNode": {
+            "toolName": "send_message",
+            "dataStoreSpecs": {
+              "specs": [
+                {
+                  "dataStore": "google_mail"
+                }
+              ]
+            },
+            "inputParameters": {
+              "Content": "Sorry",
+              "Subject": "Trade Finance not approved",
+              "To": "suttirak@kasin.altostrat.com"
+            }
+          },
+          "nodeType": "CONNECTOR_NODE",
+          "outputSchema": {
+            "properties": {
+              "id": {
+                "description": "The unique identifier for the sent message, as assigned by the Gmail server.",
+                "type": "STRING"
+              },
+              "labelIds": {
+                "description": "The labels applied to the sent message.",
+                "type": "ARRAY",
+                "items": {
+                  "type": "STRING"
+                }
+              },
+              "threadId": {
+                "description": "The unique identifier for the thread associated with the sent message.",
+                "type": "STRING"
+              }
+            }
+          }
+        },
+        {
+          "id": "send_mail_2",
+          "displayName": "Approved Mail",
+          "connectorNode": {
+            "toolName": "send_message",
+            "dataStoreSpecs": {
+              "specs": [
+                {
+                  "dataStore": "google_mail"
+                }
+              ]
+            },
+            "inputParameters": {
+              "To": "suttirak@kasin.altostrat.com",
+              "Content": "ดีใจด้วย  Good news!",
+              "Subject": "Trade Finance - Approved"
+            }
+          },
+          "nodeType": "CONNECTOR_NODE",
+          "outputSchema": {
+            "properties": {
+              "id": {
+                "description": "The unique identifier for the sent message, as assigned by the Gmail server.",
+                "type": "STRING"
+              },
+              "labelIds": {
+                "description": "The labels applied to the sent message.",
+                "type": "ARRAY",
+                "items": {
+                  "type": "STRING"
+                }
+              },
+              "threadId": {
+                "description": "The unique identifier for the thread associated with the sent message.",
+                "type": "STRING"
+              }
+            }
+          }
+        },
+        {
+          "id": "mcp_get_fx_rate",
+          "displayName": "mcp get_fx_rate",
+          "nodeType": "AGENT_REFERENCE_NODE",
+          "agentReferenceNode": {
+            "agent": "projects/27594031820/locations/global/collections/default_collection/engines/gemini-enterprise-tradefin_1782793870779/assistants/default_assistant/agents/1567489100756139696",
+            "agentReferenceType": "ADK_AGENT",
+            "inputParameters": {
+              "prompt": "Get fx rate"
+            }
+          }
+        },
+        {
+          "id": "mcp_get_fee_tariff",
+          "displayName": "mcp get_fee_tariff",
+          "nodeType": "AGENT_REFERENCE_NODE",
+          "agentReferenceNode": {
+            "agent": "projects/27594031820/locations/global/collections/default_collection/engines/gemini-enterprise-tradefin_1782793870779/assistants/default_assistant/agents/14213583249762388820",
+            "agentReferenceType": "ADK_AGENT",
+            "inputParameters": {
+              "prompt": "Get tariff"
+            }
+          }
+        },
+        {
+          "id": "gemini_agent_6",
+          "displayName": "Data consolidation",
+          "agentNode": {
+            "model": "gemini-3.5-flash",
+            "instruction": "${mcp_get_fx_rate.output}${mcp_get_fee_tariff.output}",
+            "selectedTools": {
+              "tools": [
+                {
+                  "name": "googleSearch"
+                }
+              ]
+            },
+            "outputDisplayEnabled": true
+          },
+          "nodeType": "AGENT_NODE",
+          "outputSchema": {
+            "properties": {
+              "rate": {
+                "type": "NUMBER",
+                "additionalProperties": {
+                  "display_order": 0
+                }
+              },
+              "commission_rate": {
+                "type": "NUMBER",
+                "additionalProperties": {
+                  "display_order": 1
+                }
+              },
+              "min_fee": {
+                "type": "NUMBER",
+                "additionalProperties": {
+                  "display_order": 2
+                }
+              },
+              "swift_fee": {
+                "type": "NUMBER",
+                "additionalProperties": {
+                  "display_order": 3
+                }
+              }
+            },
+            "required": [
+              "rate",
+              "commission_rate",
+              "min_fee",
+              "swift_fee"
+            ]
+          }
+        },
+        {
+          "id": "gemini_agent_7",
+          "displayName": "Calculation",
+          "agentNode": {
+            "model": "gemini-3.5-flash",
+            "instruction": "${gemini_agent_6.rate} + ${gemini_agent_6.commission_rate}+${gemini_agent_6.min_fee}+${gemini_agent_6.swift_fee}\n\noutput total to {\"total\": x}",
+            "selectedTools": {
+              "tools": [
+                {
+                  "name": "googleSearch"
+                }
+              ]
+            },
+            "outputDisplayEnabled": true
+          },
+          "nodeType": "AGENT_NODE",
+          "outputSchema": {
+            "properties": {
+              "total": {
+                "type": "NUMBER",
+                "additionalProperties": {
+                  "display_order": 0
+                }
+              }
+            },
+            "required": [
+              "total"
+            ]
+          }
+        },
+        {
+          "id": "send_mail_3",
+          "displayName": "Send Mail",
+          "connectorNode": {
+            "toolName": "send_message",
+            "dataStoreSpecs": {
+              "specs": [
+                {
+                  "dataStore": "google_mail"
+                }
+              ]
+            },
+            "inputParameters": {
+              "Subject": "Trade Finance approval request",
+              "Content": "กราบเรียน Approver,\n\nPlease review and APPROVE customer application\n\nDocument Validation : Passed \nDocument Field Extraction below,\n\n${gemini_agent_4.output}\n\nBest Regards,\n\nAI Team",
+              "To": "suttirak@kasin.altostrat.com"
+            }
+          },
+          "nodeType": "CONNECTOR_NODE",
+          "outputSchema": {
+            "properties": {
+              "threadId": {
+                "description": "The unique identifier for the thread associated with the sent message.",
+                "type": "STRING"
+              },
+              "labelIds": {
+                "description": "The labels applied to the sent message.",
+                "type": "ARRAY",
+                "items": {
+                  "type": "STRING"
+                }
+              },
+              "id": {
+                "description": "The unique identifier for the sent message, as assigned by the Gmail server.",
+                "type": "STRING"
+              }
+            }
+          }
+        },
+        {
+          "id": "gemini_agent_4",
+          "displayName": "Extraction Agent",
+          "agentNode": {
+            "model": "gemini-3.1-pro-preview",
+            "instruction": "```\nYou are an expert AI data extraction assistant specializing in Trade Finance and Letter of Credit (LC) document contents.  Your task is to analyze the provided documents, including:\n\n1. Application for Issuance of Documentary Credit\n\n2. Attachment Sheet\n\n3. Proforma Invoice (PI)\n\n4. Purchase Order (PO)\n\n5. Sales Contract (SC)\n\n6. Trust Receipt Form (TR)\n\n7. Quotation\n\nThen extract 46 specific data fields of each document.\n\n**Input:** Read attachment from  \n\n```\n\n${when_an_email_is_received.AttachmentIds} ${when_an_email_is_received.AttachmentPath}\n\nEach attachment can have single document, or multiple documents as pages in the same files.\n\n\\*\\*Extraction rules:\\*\\*\n\n\\*\\*1. Strict Mapping:\\*\\* Map the data found in the document to the corresponding JSON keys provided in the schema below.\n\n\\*\\*2. Missing Fields:\\*\\* If a field is not present or cannot be found in the document, return its value as \\`null\\`. Do not invent, guess, or substitute values.\n\n\\*\\*3. Complex Text Blocks:\\*\\* For text-heavy fields (like Goods Description, Required Documents, and Additional Conditions), preserve the line breaks and structure exactly as they appear in the source text.\n\n\\*\\*4. Data Formatting:\\*\\*\n\n\\\\- Extract currencies and amounts as clean text (e.g., \"USD\", \"150000.00\").\n\n\\\\- Extract dates in the format they appear, or standardize to YYYY-MM-DD if requested.\n\n\\*\\*5. Output Format:\\*\\* Return ONLY a valid JSON object matching the schema below. Do not wrap it in markdown code fences unless explicitly asked, and do not include any conversational preamble or postscript.\n\n\\*\\*Output JSON:\\*\\*\n\nList of documents extracted as object (document_type, and content dict of data fields).\n\nExample:\n\n\\`\\`\\`\n\n\\[\n\n  { \n\n     \"document_type\" : \"LC application form\", \n\n     \"content\" : {\n\n  \"1_applicant_party_code_app\": \"Applicant Party Code / ID / Name\",\\\\\n\n  \"2_applicant_address\": \"Applicant address lines 1, 2, 3 combined or separated\",\\\\\n\n  \"3_beneficiary_party_code_bne\": \"Beneficiary Party Code / ID\",\\\\\n\n  \"4_beneficiary_name\": \"Beneficiary name\",\\\\\n\n  \"5_beneficiary_address\": \"Beneficiary address lines 1, 2, 3\",\\\\\n\n  \"6_advising_bank_adv\": \"Advising Bank Party Code / ID / Name / Address\",\\\\\n\n  \"7_advising_through_bank_adt_id\": \"Advising Through Bank ID\",\\\\\n\n  \"8_advising_through_bank_name\": \"Advising Through Bank Name\",\\\\\n\n  \"9_advising_through_bank_address\": \"Advising Through Bank Address\",\\\\\n\n  \"10_reimbursing_bank_rmb\": \"Reimbursing Bank Party Code / ID / Name / Address\",\\\\\n\n  \"11_limit_credit_line\": \"Credit Line number\",\\\\\n\n  \"12_currency\": \"Currency of LC/DLC\",\\\\\n\n  \"13_lc_amount\": \"Amount of LC/DLC\",\\\\\n\n  \"14_amount_terms_tolerance\": \"Tolerance Amount description/terms\",\\\\\n\n  \"15_plus_minus_percent\": \"Tolerance plus/minus percentage\",\\\\\n\n  \"16_quantity_vary_percent\": \"Tolerance Goods Quantity percentage\",\\\\\n\n  \"17_effective_date\": \"LC/DLC Issuance Date\",\\\\\n\n  \"18_expiry_date\": \"Expiry Date\",\\\\\n\n  \"19_country\": \"Beneficiary Country\",\\\\\n\n  \"20_expiry_country\": \"Expiry Country\",\\\\\n\n  \"21_expiry_place\": \"Expiry Place\",\\\\\n\n  \"22_confirm_status\": \"Confirmation instructions (Without, May Add, Confirm)\",\\\\\n\n  \"23_transferable\": \"LC/DLC Transferable status (Yes/No or True/False)\",\\\\\n\n  \"24_tenor_data_type\": \"Terms of Payment (Time, Sight, Mixed)\",\\\\\n\n  \"25_tenor_days\": \"LC Time, Tenor Days\",\\\\\n\n  \"26_draft_start_event\": \"LC Time, Start Event Date / Draft details\",\\\\\n\n  \"27_due_date\": \"LC Time, Due Date\",\\\\\n\n  \"28_available_with\": \"The bank with which the LC is available for presentation\",\\\\\n\n  \"29_settlement_method\": \"The method of settlement under the LC\",\\\\\n\n  \"30_draft_drawn_on\": \"The bank on which the draft is to be drawn\",\\\\\n\n  \"31_incoterms\": \"Trade Terms / Incoterms\",\\\\\n\n  \"32_transportation_type\": \"Transportation Type\",\\\\\n\n  \"33_partial_shipment_43P\": \"Partial Shipment terms\",\\\\\n\n  \"34_transhipment_43T\": \"Transhipment terms\",\\\\\n\n  \"35_place_of_taking_in_charge_44A\": \"Place of Taking in Charge/Dispatch from.../Place of Receipt\",\\\\\n\n  \"36_port_of_loading_44E\": \"Port of Loading/Airport of Departure\",\\\\\n\n  \"37_port_of_discharge_44F\": \"Port of Discharge/Airport of Destination\",\\\\\n\n  \"38_place_of_final_destination_44B\": \"Place of Final Destination/For Transportation To.../Place of Delivery\",\\\\\n\n  \"39_latest_shipment_date\": \"Shipment Date (Latest Date of Shipment)\",\\\\\n\n  \"40_goods_description_gdesc\": \"Goods Description text block\",\\\\\n\n  \"41_required_documents_01W08\": \"Required Documents text block\",\\\\\n\n  \"42_additional_conditions_01W11\": \"Additional Conditions text block\",\\\\\n\n  \"43_period_for_presentation_days\": \"Period for Presentation in Days\",\\\\\n\n  \"44_confirm_charges_paid_by\": \"Confirmation Charges Paid by\",\\\\\n\n  \"45_reimb_bank_charges_paid_by\": \"Reimbursement Bank Charges Paid by\",\\\\\n\n  \"46_all_bank_charges_01W12\": \"All Bank Charges under LC / Special Paragraph ID '01W12'\"\\\\\n\n}\n\n},\n\n{ \n\n   \"document_type\" : \"attachment\", \n\n   \"content\" : {\n\n...\n\n},\n\n...\n\n\\]\n\n\\`\\`\\`",
+            "dataStoreSpecs": {
+              "specs": [
+                {
+                  "dataStore": "projects/27594031820/locations/global/collections/default_collection/dataStores/gmail_1782801388285_google_mail"
+                }
+              ]
+            },
+            "outputDisplayEnabled": true
+          },
+          "nodeType": "AGENT_NODE"
+        },
+        {
+          "id": "condition_1",
+          "displayName": "Condition 1",
+          "nodeType": "CONDITION_NODE",
+          "conditionNode": {
+            "ruleBasedRouting": {
+              "rules": [
+                {
+                  "branch": "Passed",
+                  "rule": {
+                    "rootExpression": {
+                      "logicalGroup": {
+                        "logicalOperator": "AND",
+                        "expressions": [
+                          {
+                            "condition": {
+                              "left": {
+                                "variablePath": "gemini_agent_2.validation"
+                              },
+                              "conditionOperator": "IS_TRUE"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ],
+              "elseBranch": "Else"
+            }
+          }
+        },
+        {
+          "id": "send_mail_1_2",
+          "displayName": "Send Mail 1",
+          "connectorNode": {
+            "toolName": "send_message",
+            "dataStoreSpecs": {
+              "specs": [
+                {
+                  "dataStore": "google_mail"
+                }
+              ]
+            },
+            "inputParameters": {
+              "Content": "ขออภัยจ้า ตรวจแล้วไม่ผ่าน\n\n${gemini_agent_2.reasons}",
+              "Subject": "Document verification failed",
+              "To": "${when_an_email_is_received.From}"
+            }
+          },
+          "nodeType": "CONNECTOR_NODE",
+          "outputSchema": {
+            "properties": {
+              "labelIds": {
+                "description": "The labels applied to the sent message.",
+                "type": "ARRAY",
+                "items": {
+                  "type": "STRING"
+                }
+              },
+              "threadId": {
+                "description": "The unique identifier for the thread associated with the sent message.",
+                "type": "STRING"
+              },
+              "id": {
+                "description": "The unique identifier for the sent message, as assigned by the Gmail server.",
+                "type": "STRING"
+              }
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "sourceNodeId": "when_an_email_is_received",
+          "targetNodeId": "gemini_agent"
+        },
+        {
+          "sourceNodeId": "gemini_agent",
+          "targetNodeId": "condition"
+        },
+        {
+          "sourceNodeId": "condition",
+          "targetNodeId": "gemini_agent_4",
+          "routeString": "SUBMIT"
+        },
+        {
+          "sourceNodeId": "gemini_agent_2",
+          "targetNodeId": "condition_1"
+        },
+        {
+          "sourceNodeId": "condition",
+          "targetNodeId": "gemini_agent_3",
+          "routeString": "APPROVE"
+        },
+        {
+          "sourceNodeId": "approval",
+          "targetNodeId": "gemini_agent_5",
+          "routeString": "Approved"
+        },
+        {
+          "sourceNodeId": "approval",
+          "targetNodeId": "send_mail_1",
+          "routeString": "Rejected"
+        },
+        {
+          "sourceNodeId": "gemini_agent_5",
+          "targetNodeId": "send_mail_2"
+        },
+        {
+          "sourceNodeId": "mcp_get_fx_rate",
+          "targetNodeId": "mcp_get_fee_tariff"
+        },
+        {
+          "sourceNodeId": "mcp_get_fee_tariff",
+          "targetNodeId": "gemini_agent_6"
+        },
+        {
+          "sourceNodeId": "gemini_agent_6",
+          "targetNodeId": "gemini_agent_7"
+        },
+        {
+          "sourceNodeId": "gemini_agent_7",
+          "targetNodeId": "approval"
+        },
+        {
+          "sourceNodeId": "gemini_agent_3",
+          "targetNodeId": "mcp_get_fx_rate"
+        },
+        {
+          "sourceNodeId": "gemini_agent_4",
+          "targetNodeId": "gemini_agent_2"
+        },
+        {
+          "sourceNodeId": "condition_1",
+          "targetNodeId": "send_mail_3",
+          "routeString": "Passed"
+        },
+        {
+          "sourceNodeId": "condition_1",
+          "targetNodeId": "send_mail_1_2",
+          "routeString": "Else"
+        }
+      ]
+    },
+    "owner": "gaia:0xf4af5d5e9e#"
+  },
+  "agentIdentityInfo": {}
+}

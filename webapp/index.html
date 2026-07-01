@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Builder → ADK Converter | Google Cloud Console</title>
+  <meta name="description" content="Convert Google Cloud Agent Builder workflow agent exports to Google Antigravity SDK (ADK) code with DAG visualization.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="top-bar">
+    <div class="top-bar__logo">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" stroke="#4285F4" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M12 12l10-5M12 12v10M12 12L2 7" stroke="#34A853" stroke-width="1.5" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="2.5" fill="#FBBC05"/>
+      </svg>
+      Agent Builder → ADK
+    </div>
+    <div class="top-bar__divider"></div>
+    <div class="top-bar__title">Workflow Converter</div>
+
+    <div class="top-bar__spacer"></div>
+
+    <div class="top-bar__action" id="helpBtn" role="button" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/>
+      </svg>
+      Help
+    </div>
+    <div class="top-bar__action" id="aboutBtn" role="button" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      About
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <div class="main-content">
+
+      <!-- ============ LEFT PANEL: JSON INPUT ============ -->
+      <section class="panel panel--left">
+        <div class="panel__header">
+          <div class="panel__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="9" y1="13" x2="15" y2="13"/>
+              <line x1="9" y1="17" x2="15" y2="17"/>
+            </svg>
+            Agent Builder JSON Export
+          </div>
+          <div id="parseStatus"></div>
+        </div>
+        <div class="panel__body">
+          <div class="input-container">
+
+            <!-- GCP Auth Panel -->
+            <div class="gcp-auth-panel" id="gcpAuthPanel">
+              <div class="gcp-auth-panel__header">
+                <div class="gcp-auth-panel__title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                  </svg>
+                  Google Cloud Agent Builder
+                </div>
+                <div class="gcp-auth-status" id="gcpAuthStatus">Not connected</div>
+              </div>
+              <div class="gcp-auth-panel__body">
+                <div class="gcp-auth-panel__row">
+                  <div class="gcp-input-group">
+                    <label>Project Number</label>
+                    <input type="text" class="gcp-input" id="gcpProjectInput" placeholder="e.g. 27594031820" />
+                  </div>
+                  <div class="gcp-input-group">
+                    <label>Location</label>
+                    <input type="text" class="gcp-input" id="gcpLocationInput" placeholder="global" value="global" />
+                  </div>
+                </div>
+                <div class="gcp-auth-panel__row">
+                  <div class="gcp-input-group" style="flex:1">
+                    <label>Engine ID (optional — skip to list all engines)</label>
+                    <input type="text" class="gcp-input" id="gcpEngineInput" placeholder="e.g. gemini-enterprise-tradefin_1782793870779" />
+                  </div>
+                </div>
+                <div class="gcp-auth-panel__row">
+                  <button class="btn btn--secondary" id="gcpSignInBtn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign in with Google
+                  </button>
+                  <button class="btn btn--primary" id="gcpFetchBtn" style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Fetch Agents
+                  </button>
+                  <button class="btn btn--ghost" id="gcpSignOutBtn" style="display:none;">
+                    Sign out
+                  </button>
+                </div>
+              </div>
+              <div id="gcpAgentList" style="display:none;"></div>
+            </div>
+
+            <div class="section-divider">
+              <span class="section-divider__text">Or paste JSON manually</span>
+              <span class="section-divider__line"></span>
+            </div>
+
+            <div class="input-actions">
+              <button class="btn btn--primary" id="convertBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+                Convert to ADK
+              </button>
+              <button class="btn btn--secondary" id="formatBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="21" y1="10" x2="3" y2="10"/>
+                  <line x1="21" y1="6" x2="3" y2="6"/>
+                  <line x1="21" y1="14" x2="3" y2="14"/>
+                  <line x1="17" y1="18" x2="7" y2="18"/>
+                </svg>
+                Format
+              </button>
+              <button class="btn btn--ghost" id="clearBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+                Clear
+              </button>
+            </div>
+
+            <div class="samples">
+              <button class="sample-btn" data-sample="1">SWIFT MT700 Generator (5 nodes)</button>
+              <button class="sample-btn" data-sample="2">Trade Finance Flow (17 nodes)</button>
+            </div>
+
+            <div class="code-editor-wrap" id="editorWrap">
+              <textarea
+                class="code-editor"
+                id="jsonInput"
+                placeholder="Paste your Google Cloud Agent Builder workflow agent JSON export here...
+
+Example structure:
+{
+  &quot;displayName&quot;: &quot;My Agent&quot;,
+  &quot;workflowAgentDefinition&quot;: {
+    &quot;agentFlow&quot;: {
+      &quot;nodes&quot;: [...],
+      &quot;edges&quot;: [...]
+    }
+  }
+}"
+                spellcheck="false"
+                aria-label="Agent Builder JSON input"
+              ></textarea>
+            </div>
+
+            <div id="errorDisplay" style="display:none;">
+              <div class="status-badge status-badge--error">
+                <span class="status-badge__dot"></span>
+                <span id="errorText"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ RIGHT PANEL: VISUALIZATION + CODE ============ -->
+      <section class="panel panel--right">
+        <div class="tabs">
+          <button class="tab tab--active" data-tab="dag">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;">
+              <circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/>
+              <line x1="9" y1="6" x2="15" y2="6"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="18" y1="9" x2="18" y2="15"/>
+            </svg>
+            Workflow DAG
+          </button>
+          <button class="tab" data-tab="adk-flow">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M9 9h6v6H9z"/>
+            </svg>
+            ADK Flow
+          </button>
+          <button class="tab" data-tab="code">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+            ADK Code
+          </button>
+          <button class="tab" data-tab="summary">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            Summary
+          </button>
+          <button class="tab" data-tab="test">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;">
+              <path d="M9 12l2 2 4-4"/>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Test
+          </button>
+        </div>
+
+        <div class="panel__body">
+
+          <!-- DAG Tab -->
+          <div class="tab-content tab-content--active" id="tab-dag">
+            <div id="dagEmpty" class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/>
+                <path d="M9 6h6M6 9v6M18 15V9"/>
+              </svg>
+              <div class="empty-state__title">No workflow loaded</div>
+              <div class="empty-state__desc">Paste an Agent Builder JSON export on the left and click <strong>Convert to ADK</strong> to visualize the directed acyclic graph.</div>
+            </div>
+            <div id="dagContent" style="display:none;">
+              <div id="agentInfoCard"></div>
+              <div class="viz-wrapper">
+                <div class="viz-controls">
+                  <button class="viz-btn" id="dagZoomIn" title="Zoom in">+</button>
+                  <div class="viz-zoom-level" id="dagZoomLevel">100%</div>
+                  <button class="viz-btn" id="dagZoomOut" title="Zoom out">−</button>
+                  <button class="viz-btn" id="dagZoomReset" title="Reset view">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/><path d="M12 3v18M3 12h18"/></svg>
+                  </button>
+                </div>
+                <div class="dag-container" id="dagContainer">
+                  <svg class="dag-svg" id="dagSvg"></svg>
+                </div>
+              </div>
+              <div class="legend" id="dagLegend"></div>
+            </div>
+          </div>
+
+          <!-- ADK Flow Tab -->
+          <div class="tab-content" id="tab-adk-flow">
+            <div id="adkFlowEmpty" class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M9 9h6v6H9z"/>
+              </svg>
+              <div class="empty-state__title">ADK flow not generated yet</div>
+              <div class="empty-state__desc">Convert a workflow to see how it maps to Google Antigravity SDK agent orchestration patterns.</div>
+            </div>
+            <div id="adkFlowContent" style="display:none;">
+              <div id="adkFlowInfoCard"></div>
+              <div class="viz-wrapper">
+                <div class="viz-controls">
+                  <button class="viz-btn" id="adkZoomIn" title="Zoom in">+</button>
+                  <div class="viz-zoom-level" id="adkZoomLevel">100%</div>
+                  <button class="viz-btn" id="adkZoomOut" title="Zoom out">−</button>
+                  <button class="viz-btn" id="adkZoomReset" title="Reset view">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/><path d="M12 3v18M3 12h18"/></svg>
+                  </button>
+                </div>
+                <div class="adk-flow-container" id="adkFlowContainer">
+                  <svg class="adk-flow-svg" id="adkFlowSvg"></svg>
+                </div>
+              </div>
+              <div class="legend" id="adkFlowLegend"></div>
+            </div>
+          </div>
+
+          <!-- Code Tab -->
+          <div class="tab-content" id="tab-code">
+            <div id="codeEmpty" class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+              </svg>
+              <div class="empty-state__title">No code generated yet</div>
+              <div class="empty-state__desc">Convert a workflow to generate Google Antigravity SDK (ADK) Python code.</div>
+            </div>
+            <div id="codeContent" style="display:none;">
+              <div class="code-output-wrap">
+                <div class="code-output-header">
+                  <div class="code-output-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2L2 7v10l10 5 10-5V7L12 2z"/>
+                    </svg>
+                    <span id="codeFilename">agent.py</span>
+                  </div>
+                  <div class="code-output-actions">
+                    <button class="btn btn--ghost" id="copyBtn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                      </svg>
+                      Copy
+                    </button>
+                    <button class="btn btn--ghost" id="downloadBtn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      Download
+                    </button>
+                  </div>
+                </div>
+                <pre class="code-output" id="codeOutput"></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary Tab -->
+          <div class="tab-content" id="tab-summary">
+            <div id="summaryEmpty" class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <div class="empty-state__title">No conversion summary yet</div>
+              <div class="empty-state__desc">Convert a workflow to see a detailed mapping summary.</div>
+            </div>
+            <div id="summaryContent" style="display:none;"></div>
+          </div>
+
+          <!-- Test Tab -->
+          <div class="tab-content" id="tab-test">
+            <div id="testEmpty" class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9 12l2 2 4-4"/>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <div class="empty-state__title">No tests generated yet</div>
+              <div class="empty-state__desc">Convert a workflow to generate and run automated tests for the ADK code.</div>
+            </div>
+            <div id="testContent" style="display:none;">
+              <div class="test-actions" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                <button class="btn btn--primary" id="runTestBtn">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Run In-Browser Test
+                </button>
+                <button class="btn btn--secondary" id="downloadTestBtn">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download test_agent.py
+                </button>
+                <button class="btn btn--secondary" id="downloadReqBtn">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Download requirements.txt
+                </button>
+              </div>
+              <div id="testResults" class="test-results"></div>
+              <div id="testCodeSection" style="margin-top:16px;">
+                <div class="code-output-wrap">
+                  <div class="code-output-header">
+                    <div class="code-output-title">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      <span>test_agent.py</span>
+                    </div>
+                    <div class="code-output-actions">
+                      <button class="btn btn--ghost" id="copyTestBtn">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                  <pre class="code-output" id="testCodeOutput" style="max-height:400px;"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Google Identity Services for OAuth -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Pyodide for in-browser Python testing -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
+
+  <script src="converter.js?v=9"></script>
+</body>
+</html>
