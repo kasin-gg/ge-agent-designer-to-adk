@@ -6,7 +6,7 @@
   <title>Agent Builder → ADK Converter | Google Cloud Console</title>
   <meta name="description" content="Convert Google Cloud Agent Builder workflow agent exports to Google Antigravity SDK (ADK) code with DAG visualization.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=13">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
 <body>
@@ -212,6 +212,13 @@ Example structure:
             </svg>
             Summary
           </button>
+          <button class="tab" data-tab="compare">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;">
+              <circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/>
+              <path d="M6 9v6a3 3 0 003 3h6"/><path d="M18 15V9a3 3 0 00-3-3H9"/>
+            </svg>
+            Compare
+          </button>
           <button class="tab" data-tab="test">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;">
               <path d="M9 12l2 2 4-4"/>
@@ -335,6 +342,20 @@ Example structure:
             <div id="summaryContent" style="display:none;"></div>
           </div>
 
+          <!-- Compare Tab -->
+          <div class="tab-content" id="tab-compare">
+            <div id="compareEmpty" class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/>
+                <path d="M6 9v6a3 3 0 003 3h6"/><path d="M18 15V9a3 3 0 00-3-3H9"/>
+              </svg>
+              <div class="empty-state__title">No comparison available yet</div>
+              <div class="empty-state__desc">Convert a workflow to evaluate DAG vs ADK Flow coverage and identify gaps.</div>
+            </div>
+            <div id="compareContent" style="display:none;">
+            </div>
+          </div>
+
           <!-- Test Tab -->
           <div class="tab-content" id="tab-test">
             <div id="testEmpty" class="empty-state">
@@ -396,6 +417,6 @@ Example structure:
   <!-- Pyodide for in-browser Python testing -->
   <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
 
-  <script src="converter.js?v=10"></script>
+  <script src="converter.js?v=13"></script>
 </body>
 </html>

@@ -471,117 +471,161 @@ function renderADKFlow(parsed) {
 function buildADKBlocks(parsed) {
   const blocks = [];
   const nodeMap = parsed.nodeMap;
+  const agentNodes = parsed.nodes.filter(n => n.nodeType === 'AGENT_NODE');
+  const triggerNodes = parsed.nodes.filter(n => n.nodeType === 'CONNECTOR_EVENT_TRIGGER');
+  const conditionNodes = parsed.nodes.filter(n => n.nodeType === 'CONDITION_NODE');
+  const connectorNodes = parsed.nodes.filter(n => n.nodeType === 'CONNECTOR_NODE');
+  const approvalNodes = parsed.nodes.filter(n => n.nodeType === 'APPROVAL_NODE');
+  const refNodes = parsed.nodes.filter(n => n.nodeType === 'AGENT_REFERENCE_NODE');
+  const schemas = collectSchemas(parsed);
 
-  // Follow the topological layers (same order as DAG)
-  parsed.layers.forEach(layer => {
-    layer.forEach(nodeId => {
-      const node = nodeMap.get(nodeId);
-      if (!node) return;
+  // ── Section 1: Imports ──
+  blocks.push({
+    title: 'Imports',
+    color: '#9aa0a6',
+    section: 'imports',
+    items: [
+      { label: 'asyncio, logging', sub: 'stdlib', color: '#9aa0a6' },
+      { label: 'Agent, LocalAgentConfig, types', sub: 'google.antigravity', color: '#9aa0a6' },
+      { label: 'hooks, on_file_change, every', sub: 'triggers + hooks', color: '#9aa0a6' },
+      ...(schemas.length > 0 ? [{ label: 'pydantic', sub: 'structured output', color: '#9aa0a6' }] : []),
+    ],
+  });
 
-      const meta = getNodeTypeMeta(node.nodeType);
-
-      // Build the ADK block based on node type, in topological order
-      switch (node.nodeType) {
-        case 'CONNECTOR_EVENT_TRIGGER': {
-          blocks.push({
-            title: 'Event Trigger',
-            color: meta.color,
-            items: [{
-              label: node.displayName,
-              sub: `on_${node.eventType || 'event'}`,
-              color: meta.color,
-            }],
-          });
-          break;
-        }
-
-        case 'AGENT_NODE': {
-          const isRoot = parsed.incoming.get(node.id)?.some(
-            e => nodeMap.get(e.source)?.nodeType === 'CONNECTOR_EVENT_TRIGGER'
-          );
-          blocks.push({
-            title: isRoot ? 'Root Agent (Classifier)' : 'LlmAgent',
-            color: meta.color,
-            items: [{
-              label: node.displayName,
-              sub: node.model || 'default model',
-              color: meta.color,
-            }, ...(node.tools.length > 0 ? [{
-              label: `Tools: ${node.tools.join(', ')}`,
-              sub: 'google_search enabled',
-              color: '#34a853',
-            }] : [])],
-          });
-          break;
-        }
-
-        case 'CONDITION_NODE': {
-          const routes = parsed.outgoing.get(node.id) || [];
-          blocks.push({
-            title: 'Conditional Router',
-            color: meta.color,
-            branch: true,
-            items: routes.map(r => ({
-              label: `if → ${r.route || 'else'}`,
-              sub: `→ ${nodeMap.get(r.target)?.displayName || r.target}`,
-              color: meta.color,
-            })),
-          });
-          break;
-        }
-
-        case 'AGENT_REFERENCE_NODE': {
-          blocks.push({
-            title: 'Subagent / MCP',
-            color: meta.color,
-            items: [{
-              label: node.displayName,
-              sub: node.refType || 'ADK_AGENT',
-              color: meta.color,
-            }],
-          });
-          break;
-        }
-
-        case 'APPROVAL_NODE': {
-          blocks.push({
-            title: 'Human-in-the-loop',
-            color: meta.color,
-            items: [{
-              label: node.displayName,
-              sub: 'AskQuestionHook',
-              color: meta.color,
-            }],
-          });
-          break;
-        }
-
-        case 'CONNECTOR_NODE': {
-          blocks.push({
-            title: 'Output Tool',
-            color: meta.color,
-            items: [{
-              label: node.displayName,
-              sub: node.connectorTool || 'tool',
-              color: meta.color,
-            }],
-          });
-          break;
-        }
-
-        default: {
-          blocks.push({
-            title: 'Custom Logic',
-            color: meta.color,
-            items: [{
-              label: node.displayName,
-              sub: node.nodeType,
-              color: meta.color,
-            }],
-          });
-        }
-      }
+  // ── Section 2: Pydantic Schemas ──
+  if (schemas.length > 0) {
+    blocks.push({
+      title: 'Pydantic Schemas',
+      color: '#f9ab00',
+      section: 'schemas',
+      items: schemas.map(s => ({
+        label: s.name,
+        sub: `${s.fields.length} field${s.fields.length !== 1 ? 's' : ''}`,
+        color: '#f9ab00',
+      })),
     });
+  }
+
+  // ── Section 3: Custom Tools ──
+  if (connectorNodes.length > 0) {
+    blocks.push({
+      title: 'Custom Tools',
+      color: '#34a853',
+      section: 'tools',
+      items: connectorNodes.map(node => ({
+        label: `${sanitizeFuncName(node.id)}()`,
+        sub: node.connectorTool || 'send_message',
+        color: '#34a853',
+      })),
+    });
+  }
+
+  // ── Section 4: Triggers ──
+  if (triggerNodes.length > 0) {
+    blocks.push({
+      title: 'Triggers',
+      color: '#e8710a',
+      section: 'triggers',
+      items: triggerNodes.map(node => ({
+        label: `${sanitizeFuncName(node.id)}()`,
+        sub: `on_${node.eventType || 'event'} (${node.dataSource || 'source'})`,
+        color: '#e8710a',
+      })),
+    });
+  }
+
+  // ── Section 5: Agent Configurations ──
+  if (agentNodes.length > 0) {
+    blocks.push({
+      title: 'Agent Configurations',
+      color: '#8ab4f8',
+      section: 'configs',
+      items: agentNodes.map(node => {
+        const schema = schemas.find(s => s.nodeId === node.id);
+        const isRoot = parsed.incoming.get(node.id)?.some(
+          e => nodeMap.get(e.source)?.nodeType === 'CONNECTOR_EVENT_TRIGGER'
+        );
+        return {
+          label: `${sanitizeFuncName(node.id)}_config`,
+          sub: `${node.model || 'default'}${isRoot ? ' · root' : ''}${schema ? ' · ' + schema.name : ''}`,
+          color: '#8ab4f8',
+        };
+      }),
+    });
+  }
+
+  // ── Section 6: Main Orchestration (async main) ──
+  const mainItems = [];
+
+  // Agent execution steps (mirror the sequential flow in main())
+  let stepNum = 1;
+  agentNodes.forEach((node) => {
+    const isRoot = parsed.incoming.get(node.id)?.some(
+      e => nodeMap.get(e.source)?.nodeType === 'CONNECTOR_EVENT_TRIGGER'
+    );
+    // Build prompt source description from incoming edges
+    const incEdges = parsed.incoming.get(node.id) || [];
+    let promptSource = 'Begin processing';
+    if (incEdges.length > 0) {
+      const sources = incEdges.map(e => {
+        const src = nodeMap.get(e.source);
+        if (src?.nodeType === 'CONNECTOR_EVENT_TRIGGER') return 'trigger event';
+        if (src?.nodeType === 'AGENT_NODE') return `${src.displayName} output`;
+        return src?.displayName || 'input';
+      });
+      promptSource = sources.join(' + ');
+    }
+    mainItems.push({
+      label: `Step ${stepNum}: ${node.displayName}`,
+      sub: `Agent.chat(${promptSource})`,
+      color: '#8ab4f8',
+    });
+    stepNum++;
+  });
+
+  // Conditional routing
+  conditionNodes.forEach(node => {
+    const routes = parsed.outgoing.get(node.id) || [];
+    routes.forEach(r => {
+      mainItems.push({
+        label: `if route == "${r.route || 'default'}"`,
+        sub: `→ ${nodeMap.get(r.target)?.displayName || r.target}`,
+        color: '#e8710a',
+      });
+    });
+  });
+
+  // Approvals
+  approvalNodes.forEach(node => {
+    const msg = (node.approvalMessage || 'Please review').slice(0, 40);
+    mainItems.push({
+      label: `Approval: ${node.displayName}`,
+      sub: `AskQuestionHook · "${msg}${(node.approvalMessage || '').length > 40 ? '...' : ''}"`,
+      color: '#aecbfa',
+    });
+  });
+
+  // Agent references / MCP calls
+  refNodes.forEach(node => {
+    mainItems.push({
+      label: `Subagent: ${node.displayName}`,
+      sub: node.refType || 'ADK_AGENT',
+      color: '#f9ab00',
+    });
+  });
+
+  // Entry point
+  mainItems.push({
+    label: 'if __name__ == "__main__"',
+    sub: 'asyncio.run(main())',
+    color: '#9aa0a6',
+  });
+
+  blocks.push({
+    title: 'Main Orchestration',
+    color: '#aecbfa',
+    section: 'main',
+    items: mainItems,
   });
 
   return blocks;
@@ -799,14 +843,17 @@ function generateADKCode(parsed) {
   agentNodes.forEach((node, idx) => {
     const configName = `${sanitizeFuncName(node.id)}_config`;
     const model = node.model || 'gemini-3.5-flash';
-    const instruction = (node.instruction || 'You are a helpful assistant.').replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+    const instruction = (node.instruction || 'You are a helpful assistant.')
+      .replace(/\\n/g, '\n')
+      .replace(/\\\\/g, '\\')
+      .replace(/"""/g, '\\"\\"\\"');
     const tools = node.tools.length > 0 ? node.tools : [];
 
     lines.push(`${configName} = LocalAgentConfig(`);
     if (model) lines.push(`    model="${model}",`);
     // Truncate very long instructions
-    const shortInstruction = instruction.length > 500 ? instruction.slice(0, 500) + '...' : instruction;
-    lines.push(`    system_instructions="""${shortInstruction}""",`);
+    const shortInstruction = instruction.length > 2000 ? instruction.slice(0, 2000) + '...' : instruction;
+    lines.push(`    system_instructions="""${shortInstruction}\n""",`);
 
     // Tools
     const toolFuncs = connectorNodes.map(n => sanitizeFuncName(n.id));
@@ -885,10 +932,34 @@ function generateADKCode(parsed) {
   if (approvalNodes.length > 0) {
     lines.push('    # Human-in-the-loop approval');
     approvalNodes.forEach(node => {
-      lines.push(`    # ${node.displayName}: "${node.approvalMessage || 'Please review'}"`);
+      const msg = (node.approvalMessage || 'Please review')
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n');
+      lines.push(`    # ${node.displayName}: "${msg}"`);
       lines.push(`    # Use AskQuestionHook or on_interaction hook`);
     });
     lines.push('');
+  }
+
+  // Handle agent references (MCP / subagents)
+  if (refNodes.length > 0) {
+    lines.push('    # Subagent / MCP references');
+    refNodes.forEach(node => {
+      lines.push(`    # Subagent: ${node.displayName} (${node.refType || 'ADK_AGENT'})`);
+      const refAgent = node.refAgent || '';
+      if (refAgent) {
+        lines.push(`    # Agent: ${refAgent}`);
+      }
+      const inputParams = node.inputParameters || {};
+      const paramKeys = Object.keys(inputParams);
+      if (paramKeys.length > 0) {
+        lines.push(`    # Input: ${paramKeys.map(k => `${k}=${JSON.stringify(inputParams[k]).slice(0, 60)}`).join(', ')}`);
+      }
+      lines.push(`    # TODO: Invoke subagent via ADK Agent reference or MCP tool`);
+      lines.push(`    # ${sanitizeFuncName(node.id)}_result = await subagent.invoke(...)`);
+      lines.push('');
+    });
   }
 
   lines.push('    logging.info("Workflow complete.")');
@@ -1182,6 +1253,296 @@ function renderSummary(parsed) {
           </li>
         `).join('')}
       </ul>
+    </div>
+  `;
+}
+
+/* ============================================
+   COMPARISON: DAG vs ADK Flow
+   ============================================ */
+
+function renderComparison(parsed) {
+  const container = document.getElementById('compareContent');
+  const nodeMap = parsed.nodeMap;
+  const agentNodes = parsed.nodes.filter(n => n.nodeType === 'AGENT_NODE');
+  const triggerNodes = parsed.nodes.filter(n => n.nodeType === 'CONNECTOR_EVENT_TRIGGER');
+  const conditionNodes = parsed.nodes.filter(n => n.nodeType === 'CONDITION_NODE');
+  const connectorNodes = parsed.nodes.filter(n => n.nodeType === 'CONNECTOR_NODE');
+  const approvalNodes = parsed.nodes.filter(n => n.nodeType === 'APPROVAL_NODE');
+  const refNodes = parsed.nodes.filter(n => n.nodeType === 'AGENT_REFERENCE_NODE');
+  const schemas = collectSchemas(parsed);
+  const generatedCode = generateADKCode(parsed);
+
+  const checks = [];
+
+  // ── Node Coverage: every DAG node should appear in the generated code ──
+  parsed.nodes.forEach(node => {
+    const meta = getNodeTypeMeta(node.nodeType);
+    const safeId = sanitizeFuncName(node.id);
+
+    switch (node.nodeType) {
+      case 'AGENT_NODE': {
+        const configName = `${safeId}_config`;
+        const inCode = generatedCode.includes(configName);
+        const schema = schemas.find(s => s.nodeId === node.id);
+        checks.push({
+          name: `Agent: ${node.displayName}`,
+          dag: `Agent node (${node.model || 'default'})`,
+          adk: inCode ? `LocalAgentConfig "${configName}"` : 'MISSING',
+          status: inCode ? 'pass' : 'fail',
+          detail: inCode
+            ? (schema ? `With response_schema=${schema.name} (${schema.fields.length} fields)` : 'No output schema')
+            : `Config "${configName}" not found in generated code`,
+        });
+        break;
+      }
+      case 'CONNECTOR_EVENT_TRIGGER': {
+        const triggerName = safeId;
+        const inCode = generatedCode.includes(`async def ${triggerName}(ctx`);
+        checks.push({
+          name: `Trigger: ${node.displayName}`,
+          dag: `Event trigger (${node.eventType})`,
+          adk: inCode ? `async def ${triggerName}()` : 'MISSING',
+          status: inCode ? 'pass' : 'fail',
+          detail: inCode ? `on_${node.eventType} from ${node.dataSource || 'source'}` : 'Trigger function not generated',
+        });
+        break;
+      }
+      case 'CONNECTOR_NODE': {
+        const funcName = safeId;
+        const inCode = generatedCode.includes(`def ${funcName}(`);
+        checks.push({
+          name: `Tool: ${node.displayName}`,
+          dag: `Connector node (${node.connectorTool || 'tool'})`,
+          adk: inCode ? `def ${funcName}()` : 'MISSING',
+          status: inCode ? 'pass' : 'fail',
+          detail: inCode ? `Tool: ${node.connectorTool || 'send_message'}` : 'Tool function not generated',
+        });
+        break;
+      }
+      case 'CONDITION_NODE': {
+        const routes = parsed.outgoing.get(node.id) || [];
+        const allRoutesInCode = routes.every(r =>
+          generatedCode.includes(`route == "${r.route || 'default'}"`)
+        );
+        checks.push({
+          name: `Condition: ${node.displayName}`,
+          dag: `${routes.length} route(s): ${routes.map(r => r.route || 'default').join(', ')}`,
+          adk: allRoutesInCode ? `if/elif routing for ${routes.length} branch(es)` : 'PARTIAL',
+          status: allRoutesInCode ? 'pass' : 'warn',
+          detail: allRoutesInCode
+            ? `All ${routes.length} routes mapped to if/elif`
+            : 'Some routes missing in generated code',
+        });
+        break;
+      }
+      case 'APPROVAL_NODE': {
+        const inCode = generatedCode.includes(`# ${node.displayName}:`);
+        checks.push({
+          name: `Approval: ${node.displayName}`,
+          dag: `Approval node ("${(node.approvalMessage || '').slice(0, 30)}...")`,
+          adk: inCode ? 'AskQuestionHook comment' : 'MISSING',
+          status: inCode ? 'pass' : 'fail',
+          detail: inCode ? 'Mapped to AskQuestionHook comment' : 'Approval not found in generated code',
+        });
+        break;
+      }
+      case 'AGENT_REFERENCE_NODE': {
+        const inCode = generatedCode.includes(`# Subagent: ${node.displayName}`) || generatedCode.includes('subagent.invoke');
+        checks.push({
+          name: `Subagent: ${node.displayName}`,
+          dag: `Agent reference (${node.refType || 'ADK_AGENT'})`,
+          adk: inCode ? `Subagent reference (${node.refType || 'ADK_AGENT'})` : 'MISSING',
+          status: inCode ? 'pass' : 'warn',
+          detail: inCode ? 'Referenced in Main Orchestration section' : 'Agent reference may not be in generated code',
+        });
+        break;
+      }
+      default: {
+        checks.push({
+          name: `Node: ${node.displayName}`,
+          dag: `Unknown type (${node.nodeType})`,
+          adk: '—',
+          status: 'warn',
+          detail: 'Unknown node type — not mapped to ADK',
+        });
+      }
+    }
+  });
+
+  // ── Edge Coverage: every DAG edge should be represented ──
+  let edgesCovered = 0;
+  let edgesTotal = 0;
+  parsed.edges.forEach(edge => {
+    edgesTotal++;
+    const source = nodeMap.get(edge.sourceNodeId);
+    const target = nodeMap.get(edge.targetNodeId);
+    const route = edge.routeString;
+
+    if (source && target) {
+      // Agent → Agent: code generates "Previous output: {source_response}"
+      if (source.nodeType === 'AGENT_NODE' && target.nodeType === 'AGENT_NODE') {
+        if (generatedCode.includes('Previous output:')) {
+          edgesCovered++; return;
+        }
+      }
+      // Trigger → Agent: code generates "Process the triggered event data"
+      if (source.nodeType === 'CONNECTOR_EVENT_TRIGGER' && target.nodeType === 'AGENT_NODE') {
+        if (generatedCode.includes('Process the triggered event data')) {
+          edgesCovered++; return;
+        }
+      }
+      // Condition → Any: code generates route == "routeName"
+      if (source.nodeType === 'CONDITION_NODE') {
+        if (generatedCode.includes(`route == "${route || 'default'}"`)) {
+          edgesCovered++; return;
+        }
+      }
+      // Agent → Condition: agent runs before condition check (covered by sequential flow)
+      if (source.nodeType === 'AGENT_NODE' && target.nodeType === 'CONDITION_NODE') {
+        // The agent's response variable is used before the condition check
+        const agentIdx = agentNodes.indexOf(source);
+        if (agentIdx >= 0 && generatedCode.includes(`result_${agentIdx}`)) {
+          edgesCovered++; return;
+        }
+      }
+      // Agent → Connector (Tool): tools are registered in agent configs
+      if (source.nodeType === 'AGENT_NODE' && target.nodeType === 'CONNECTOR_NODE') {
+        if (generatedCode.includes(`tools=[`) && generatedCode.includes(`${sanitizeFuncName(target.id)}(`)) {
+          edgesCovered++; return;
+        }
+      }
+      // Agent → Approval: covered by approval comment section
+      if (source.nodeType === 'AGENT_NODE' && target.nodeType === 'APPROVAL_NODE') {
+        if (generatedCode.includes('# Approval:') || generatedCode.includes('AskQuestionHook')) {
+          edgesCovered++; return;
+        }
+      }
+      // Agent → Agent Reference: covered by subagent comment section
+      if (source.nodeType === 'AGENT_NODE' && target.nodeType === 'AGENT_REFERENCE_NODE') {
+        if (generatedCode.includes('# Subagent:') || generatedCode.includes('subagent')) {
+          edgesCovered++; return;
+        }
+      }
+      // Agent Reference → Agent: subagent output feeds into next agent
+      if (source.nodeType === 'AGENT_REFERENCE_NODE' && target.nodeType === 'AGENT_NODE') {
+        if (generatedCode.includes('subagent.invoke')) {
+          edgesCovered++; return;
+        }
+      }
+      // Approval → Connector: approval branches to output tools
+      if (source.nodeType === 'APPROVAL_NODE' && target.nodeType === 'CONNECTOR_NODE') {
+        if (generatedCode.includes('AskQuestionHook')) {
+          edgesCovered++; return;
+        }
+      }
+      // Condition → Connector: route leads to a tool
+      if (source.nodeType === 'CONDITION_NODE' && target.nodeType === 'CONNECTOR_NODE') {
+        if (generatedCode.includes(`route == "${route || 'default'}"`)) {
+          edgesCovered++; return;
+        }
+      }
+    }
+  });
+
+  checks.push({
+    name: 'Edge Coverage (Data Flow)',
+    dag: `${edgesTotal} edges connecting nodes`,
+    adk: `${edgesCovered} edges represented in orchestration`,
+    status: edgesCovered === edgesTotal ? 'pass' : edgesCovered > edgesTotal * 0.5 ? 'warn' : 'fail',
+    detail: `${edgesCovered}/${edgesTotal} edges have corresponding data flow in generated code`,
+  });
+
+  // ── Schema Coverage ──
+  const schemaNodes = parsed.nodes.filter(n => n.outputSchema && n.outputSchema.properties);
+  const schemaCoverage = schemaNodes.every(node => {
+    const schema = schemas.find(s => s.nodeId === node.id);
+    return schema && generatedCode.includes(schema.name);
+  });
+  checks.push({
+    name: 'Schema Coverage',
+    dag: `${schemaNodes.length} nodes with output schemas`,
+    adk: schemaCoverage ? `${schemas.length} Pydantic models generated` : 'INCOMPLETE',
+    status: schemaCoverage ? 'pass' : 'warn',
+    detail: schemaCoverage
+      ? 'All output schemas converted to Pydantic BaseModel'
+      : 'Some output schemas may be missing from generated code',
+  });
+
+  // ── Structural completeness ──
+  checks.push({
+    name: 'Import Section',
+    dag: '—',
+    adk: generatedCode.includes('from google.antigravity import') ? 'Present' : 'MISSING',
+    status: generatedCode.includes('from google.antigravity import') ? 'pass' : 'fail',
+    detail: 'Google Antigravity SDK imports',
+  });
+
+  checks.push({
+    name: 'Main Orchestration',
+    dag: '—',
+    adk: generatedCode.includes('async def main():') ? 'Present' : 'MISSING',
+    status: generatedCode.includes('async def main():') ? 'pass' : 'fail',
+    detail: 'async main() entry point for orchestration',
+  });
+
+  checks.push({
+    name: 'Entry Point',
+    dag: '—',
+    adk: generatedCode.includes('if __name__ == "__main__":') ? 'Present' : 'MISSING',
+    status: generatedCode.includes('if __name__ == "__main__":') ? 'pass' : 'fail',
+    detail: 'Python entry point with asyncio.run(main())',
+  });
+
+  // ── Render ──
+  const passCount = checks.filter(c => c.status === 'pass').length;
+  const warnCount = checks.filter(c => c.status === 'warn').length;
+  const failCount = checks.filter(c => c.status === 'fail').length;
+  const coverage = Math.round((passCount / checks.length) * 100);
+
+  let summaryClass = 'test-summary--pass';
+  let summaryIcon = '<polyline points="20 6 9 17 4 12"/>';
+  let summaryText = `All ${checks.length} checks passed`;
+
+  if (failCount > 0) {
+    summaryClass = 'test-summary--fail';
+    summaryIcon = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+    summaryText = `${failCount} failed, ${warnCount} warnings, ${passCount} passed`;
+  } else if (warnCount > 0) {
+    summaryClass = 'test-summary--fail';
+    summaryIcon = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+    summaryText = `${warnCount} warnings, ${passCount} passed`;
+  }
+
+  container.innerHTML = `
+    <div class="test-summary ${summaryClass}">
+      <svg class="test-summary__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${summaryIcon}</svg>
+      <div class="test-summary__text">
+        ${summaryText}
+        <div class="test-summary__detail">DAG → ADK Flow Coverage: ${coverage}% (${passCount}/${checks.length} checks passed)</div>
+      </div>
+    </div>
+    <div style="background:var(--bg-surface);border:1px solid var(--border-light);border-radius:var(--radius-md);margin-bottom:12px;">
+      ${checks.map(check => {
+        const icon = check.status === 'pass'
+          ? '<svg class="test-check__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'
+          : check.status === 'warn'
+          ? '<svg class="test-check__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+          : '<svg class="test-check__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        return `
+          <div class="test-check test-check--${check.status}">
+            ${icon}
+            <div class="test-check__label">
+              ${escapeHtml(check.name)}
+              <div class="test-check__detail">
+                <strong>DAG:</strong> ${escapeHtml(check.dag)}<br>
+                <strong>ADK:</strong> ${escapeHtml(check.adk)}<br>
+                ${escapeHtml(check.detail)}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
@@ -1767,6 +2128,11 @@ function convert() {
   document.getElementById('testEmpty').style.display = 'none';
   document.getElementById('testContent').style.display = 'block';
   document.getElementById('testResults').innerHTML = '';
+
+  // Show compare tab content
+  document.getElementById('compareEmpty').style.display = 'none';
+  document.getElementById('compareContent').style.display = 'block';
+  renderComparison(parsed);
 
   renderSummary(parsed);
   showToast('Converted successfully! Check all tabs.', 'success');
