@@ -159,6 +159,74 @@ A complex branching workflow with:
 
 ---
 
+## 📥 Manually Fetching Agent JSON
+
+If you prefer to fetch the raw agent JSON manually (instead of using the in-app GCP authentication), you can use the Discovery Engine API with `curl`:
+
+```bash
+curl -X GET \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json" \
+    "https://discoveryengine.googleapis.com/v1alpha/projects/{PROJECT_NUMBER}/locations/{LOCATION}/collections/default_collection/engines/{ENGINE_ID}/assistants/default_assistant/agents/{AGENT_ID}"
+```
+
+**Example** (with sanitized placeholder values):
+
+```bash
+curl -X GET \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json" \
+    "https://discoveryengine.googleapis.com/v1alpha/projects/000000000000/locations/global/collections/default_collection/engines/your-engine-id/assistants/default_assistant/agents/00000000000000000000"
+```
+
+### Path Components
+
+| Component | Description | Example |
+|---|---|---|
+| `PROJECT_NUMBER` | Your GCP project number | `000000000000` |
+| `LOCATION` | Resource location | `global` |
+| `ENGINE_ID` | Discovery Engine app ID | `your-engine-id_0000000000000` |
+| `AGENT_ID` | Workflow agent ID | `00000000000000000000` |
+
+### Prerequisites
+
+1. **Google Cloud CLI** installed and authenticated:
+   ```bash
+   gcloud auth login
+   gcloud config set project YOUR_PROJECT_ID
+   ```
+
+2. **Discovery Engine API** enabled in your GCP project
+
+3. Save the output to a `.json` file, then paste it into the converter:
+   ```bash
+   curl -X GET \
+       -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+       -H "Content-Type: application/json" \
+       "https://discoveryengine.googleapis.com/v1alpha/projects/000000000000/locations/global/collections/default_collection/engines/your-engine-id/assistants/default_assistant/agents/00000000000000000000" \
+       -o agent_export.json
+   ```
+
+### To list all agents in an engine
+
+```bash
+curl -X GET \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json" \
+    "https://discoveryengine.googleapis.com/v1alpha/projects/000000000000/locations/global/collections/default_collection/engines/your-engine-id/assistants/default_assistant/agents"
+```
+
+### To list all engines
+
+```bash
+curl -X GET \
+    -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+    -H "Content-Type: application/json" \
+    "https://discoveryengine.googleapis.com/v1alpha/projects/000000000000/locations/global/collections/default_collection/engines"
+```
+
+---
+
 ## 🔧 How the Conversion Works
 
 ### 1. Parsing
