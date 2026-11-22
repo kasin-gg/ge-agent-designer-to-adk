@@ -1,0 +1,5 @@
+.gemini
+raw_output*.json
+*.md
+.git
+webapp/artifacts
